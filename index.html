@@ -1,54 +1,82 @@
 <!DOCTYPE html>
-<!-- 这是HTML5标准声明头，确保GitHub Pages识别为网页而非文本 -->
+<!-- HTML5标准声明头，确保GitHub Pages识别为网页 -->
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <!-- 视口设置，确保在手机等移动设备上响应式显示 -->
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>我的3D作品集</title>
     <style>
-        /* 全局样式重置，清除默认边距和内边距 */
+        /* 全局样式重置 */
         * {
             margin: 0;
             padding: 0;
             box-sizing: border-box;
         }
 
-        /* 页面主体样式：全黑背景，最小高度占满屏幕 */
+        /* 页面主体：全黑背景，水平居中，添加顶部/底部间距 */
         body {
             background-color: #000;
             min-height: 100vh;
             display: flex;
             flex-direction: column;
-            align-items: center; /* 水平居中 */
+            align-items: center;
+            padding: 20px 0; /* 上下留白，避免图片贴边 */
         }
 
-        /* 图片容器样式：宽度100%，确保图片垂直排列 */
+        /* 图片容器：限制最大宽度，确保初始尺寸不超屏 */
         .portfolio-container {
             width: 100%;
+            max-width: 1200px; /* 电脑端最大宽度，可自行调整 */
+            padding: 0 10px; /* 左右小间距，避免贴边 */
         }
 
-        /* 图片样式：响应式占满容器宽度，居中显示，添加少量间距 */
+        /* 图片基础样式：初始宽度80%，居中，保持比例，可缩放 */
         .portfolio-img {
-            width: 100%;
-            height: auto; /* 保持图片比例 */
-            display: block; /* 消除图片底部默认空隙 */
-            margin: 0 auto; /* 水平居中 */
-            padding: 8px 0; /* 图片之间的垂直间距 */
+            width: 80%; /* 初始宽度设为屏幕/容器的80%，不再占满 */
+            height: auto;
+            display: block;
+            margin: 10px auto; /* 垂直间距+水平居中 */
+            transform-origin: center center; /* 缩放以图片中心为原点 */
+            transition: transform 0.1s ease; /* 缩放动画，更顺滑 */
+            cursor: zoom-in; /* 鼠标悬浮提示可缩放 */
         }
     </style>
 </head>
 <body>
     <!-- 作品集图片容器 -->
     <div class="portfolio-container">
-        <!-- 图片顺序可通过调整以下img标签的顺序来修改 -->
-        <img src="1.jpg" alt="3D作品1" class="portfolio-img">
-        <img src="2.jpg" alt="3D作品2" class="portfolio-img">
-        <img src="3.jpg" alt="3D作品3" class="portfolio-img">
-        <img src="4.jpg" alt="3D作品4" class="portfolio-img">
-        <img src="2025.jpg" alt="3D作品2025" class="portfolio-img">
-        <img src="2025-1.jpg" alt="3D作品2025-1" class="portfolio-img">
-        <img src="111.jpg" alt="3D作品111" class="portfolio-img">
+        <!-- 图片顺序可直接调整img标签顺序 -->
+        <img src="1.jpg" alt="3D作品1" class="portfolio-img" onwheel="zoomImg(event)">
+        <img src="2.jpg" alt="3D作品2" class="portfolio-img" onwheel="zoomImg(event)">
+        <img src="3.jpg" alt="3D作品3" class="portfolio-img" onwheel="zoomImg(event)">
+        <img src="4.jpg" alt="3D作品4" class="portfolio-img" onwheel="zoomImg(event)">
+        <img src="2025.jpg" alt="3D作品2025" class="portfolio-img" onwheel="zoomImg(event)">
+        <img src="2025-1.jpg" alt="3D作品2025-1" class="portfolio-img" onwheel="zoomImg(event)">
+        <img src="111.jpg" alt="3D作品111" class="portfolio-img" onwheel="zoomImg(event)">
     </div>
+
+    <script>
+        // 鼠标滚轮缩放图片的核心函数
+        function zoomImg(event) {
+            // 阻止页面整体滚动，只缩放图片
+            event.preventDefault();
+            
+            const img = event.target;
+            // 获取当前缩放比例（默认1，即初始80%宽度）
+            let scale = parseFloat(img.dataset.scale || 1);
+            
+            // 滚轮向上（放大）：增加缩放比例；向下（缩小）：减少缩放比例
+            // 0.1是缩放步长，可调整（比如0.05更细腻，0.2更快）
+            scale += event.deltaY > 0 ? -0.1 : 0.1;
+            
+            // 限制缩放范围，避免缩太小/太大（可自行调整）
+            scale = Math.max(0.5, Math.min(2, scale)); // 最小0.5倍，最大2倍
+            
+            // 保存当前缩放比例到图片的data属性
+            img.dataset.scale = scale;
+            // 应用缩放变换
+            img.style.transform = `scale(${scale})`;
+        }
+    </script>
 </body>
 </html>
