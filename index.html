@@ -2,7 +2,7 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
     <title>我的3D作品集</title>
     <style>
         * {
@@ -44,6 +44,7 @@
             display: flex;
             justify-content: center;
             overflow: hidden;
+            touch-action: none; /* 禁用浏览器默认触摸行为 */
         }
 
         /* 图片样式 */
@@ -57,8 +58,13 @@
             image-rendering: pixelated;
             filter: blur(0.4px);
             pointer-events: auto;
+            position: relative;
+            z-index: 1;
         }
 
+        .portfolio-img:active {
+            cursor: grabbing; /* 按住时的光标样式 */
+        }
     </style>
 </head>
 
@@ -76,62 +82,137 @@
 <div class="img-box"><img src="111.jpg" class="portfolio-img"></div>
 
 <script>
-// 鼠标滚轮缩放
+// 初始化每张图片的参数
 document.querySelectorAll('.portfolio-img').forEach(img => {
+  // 初始化缩放、位移参数
   img.dataset.scale = 1;
   img.dataset.x = 0;
   img.dataset.y = 0;
 
-  // 滚轮缩放
-  img.onwheel = (e) => {
+  // --------------------------
+  // 1. 电脑端滚轮缩放功能
+  // --------------------------
+  img.addEventListener('wheel', (e) => {
     e.preventDefault();
     let scale = parseFloat(img.dataset.scale);
+    // 调整缩放步长，放大缩小更顺手
     scale += e.deltaY < 0 ? 0.2 : -0.2;
-    if (scale < 0.5) scale = 0.5;
-    if (scale > 6) scale = 6; // 最大放大6倍！
+    // 限制缩放范围：最小0.5倍，最大6倍
+    scale = Math.max(0.5, Math.min(6, scale));
     img.dataset.scale = scale;
-    update(img);
-  };
+    updateImgTransform(img);
+  }, { passive: false });
 
-  // 鼠标拖拽
-  let dragging = false, startX, startY;
+  // --------------------------
+  // 2. 电脑端鼠标拖拽功能（修复失效问题）
+  // --------------------------
+  let isDragging = false;
+  let startX = 0, startY = 0;
 
-  img.onmousedown = (e) => {
-    dragging = true;
-    startX = e.clientX;
-    startY = e.clientY;
+  // 鼠标按下
+  img.addEventListener('mousedown', (e) => {
+    e.preventDefault();
+    isDragging = true;
+    // 记录按下时的鼠标位置
+    startX = e.clientX - parseFloat(img.dataset.x);
+    startY = e.clientY - parseFloat(img.dataset.y);
     img.style.cursor = "grabbing";
-  };
+  });
 
-  document.onmousemove = (e) => {
-    if (!dragging) return;
-    let dx = e.clientX - startX;
-    let dy = e.clientY - startY;
-    img.dataset.x = parseFloat(img.dataset.x || 0) + dx;
-    img.dataset.y = parseFloat(img.dataset.y || 0) + dy;
-    startX = e.clientX;
-    startY = e.clientY;
-    update(img);
-  };
+  // 鼠标移动（绑定到document，避免鼠标移出图片失效）
+  document.addEventListener('mousemove', (e) => {
+    if (!isDragging) return;
+    // 计算新的位移
+    const newX = e.clientX - startX;
+    const newY = e.clientY - startY;
+    img.dataset.x = newX;
+    img.dataset.y = newY;
+    updateImgTransform(img);
+  });
 
-  document.onmouseup = () => {
-    dragging = false;
-    if (img.style) img.style.cursor = "grab";
-  };
+  // 鼠标松开
+  document.addEventListener('mouseup', () => {
+    isDragging = false;
+    img.style.cursor = "grab";
+  });
 
-  function update(img) {
-    let x = img.dataset.x;
-    let y = img.dataset.y;
-    let s = img.dataset.scale;
-    img.style.transform = `translate(${x}px, ${y}px) scale(${s})`;
+  // --------------------------
+  // 3. 移动端触摸功能（缩放+拖拽）
+  // --------------------------
+  let touchStart = {};
+  let initialScale = 1;
+
+  // 触摸开始
+  img.addEventListener('touchstart', (e) => {
+    e.preventDefault();
+    const touches = e.touches;
+    
+    // 单指触摸：初始化拖拽
+    if (touches.length === 1) {
+      touchStart.x = touches[0].clientX - parseFloat(img.dataset.x);
+      touchStart.y = touches[0].clientY - parseFloat(img.dataset.y);
+    }
+    // 双指触摸：初始化缩放
+    else if (touches.length === 2) {
+      initialScale = parseFloat(img.dataset.scale);
+      // 计算双指初始距离
+      touchStart.distance = getTouchDistance(touches[0], touches[1]);
+    }
+  }, { passive: false });
+
+  // 触摸移动
+  img.addEventListener('touchmove', (e) => {
+    e.preventDefault();
+    const touches = e.touches;
+    
+    // 单指移动：拖拽图片
+    if (touches.length === 1) {
+      const newX = touches[0].clientX - touchStart.x;
+      const newY = touches[0].clientY - touchStart.y;
+      img.dataset.x = newX;
+      img.dataset.y = newY;
+      updateImgTransform(img);
+    }
+    // 双指移动：缩放图片
+    else if (touches.length === 2) {
+      const currentDistance = getTouchDistance(touches[0], touches[1]);
+      const scale = initialScale * (currentDistance / touchStart.distance);
+      // 限制缩放范围
+      img.dataset.scale = Math.max(0.5, Math.min(6, scale));
+      updateImgTransform(img);
+    }
+  }, { passive: false });
+
+  // --------------------------
+  // 工具函数：更新图片变换样式
+  // --------------------------
+  function updateImgTransform(img) {
+    const x = img.dataset.x;
+    const y = img.dataset.y;
+    const scale = img.dataset.scale;
+    img.style.transform = `translate(${x}px, ${y}px) scale(${scale})`;
+  }
+
+  // --------------------------
+  // 工具函数：计算双指距离
+  // --------------------------
+  function getTouchDistance(touch1, touch2) {
+    const dx = touch2.clientX - touch1.clientX;
+    const dy = touch2.clientY - touch1.clientY;
+    return Math.sqrt(dx * dx + dy * dy);
   }
 });
 
-// 禁止快捷键扒图
-document.onkeydown = (e) => {
-  if (e.key == "F12" || (e.ctrlKey && e.key == "u") || (e.ctrlKey && e.key == "s"))
+// --------------------------
+// 额外防护：禁止快捷键扒图
+// --------------------------
+document.addEventListener('keydown', (e) => {
+  // 禁止F12、Ctrl+U（查看源代码）、Ctrl+S（保存网页）
+  if (e.key === "F12" || (e.ctrlKey && e.key === "u") || (e.ctrlKey && e.key === "s")) {
+    e.preventDefault();
     return false;
-};
+  }
+});
 </script>
 
 </body>
