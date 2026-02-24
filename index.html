@@ -39,7 +39,7 @@
         .img-box {
             position: relative;
             width: 100%;
-            max-width: 900px;
+            max-width: 1100px; /* 容器宽度调大，让图片初始显示更大 */
             margin: 10px auto;
             display: flex;
             justify-content: center;
@@ -47,9 +47,9 @@
             touch-action: none; /* 禁用浏览器默认触摸行为 */
         }
 
-        /* 图片样式：初始尺寸调大（从70%→90%），仅极轻微模糊 */
+        /* 图片样式：初始尺寸调至98%（接近满屏但不溢出） */
         .portfolio-img {
-            width: 90%; /* 核心调整：初始宽度从70%改为90%，不占满屏幕且更大 */
+            width: 98%; /* 核心调整：初始宽度调至98%，更大且不占满屏幕 */
             height: auto;
             display: block;
             cursor: grab;
@@ -72,13 +72,14 @@
 <div class="tip">✨ 鼠标滚轮放大缩小 · 左键拖拽查看细节</div>
 <div class="tip">Use mouse wheel to zoom · Drag to view details</div>
 
-<div class="img-box"><img src="1.jpg" class="portfolio-img"></div>
-<div class="img-box"><img src="2.jpg" class="portfolio-img"></div>
-<div class="img-box"><img src="3.jpg" class="portfolio-img"></div>
-<div class="img-box"><img src="4.jpg" class="portfolio-img"></div>
-<div class="img-box"><img src="2025.jpg" class="portfolio-img"></div>
-<div class="img-box"><img src="2025-1.jpg" class="portfolio-img"></div>
+<!-- 图片顺序完全反转：111.jpg → 2025-1.jpg → 2025.jpg → 4.jpg → 3.jpg → 2.jpg → 1.jpg -->
 <div class="img-box"><img src="111.jpg" class="portfolio-img"></div>
+<div class="img-box"><img src="2025-1.jpg" class="portfolio-img"></div>
+<div class="img-box"><img src="2025.jpg" class="portfolio-img"></div>
+<div class="img-box"><img src="4.jpg" class="portfolio-img"></div>
+<div class="img-box"><img src="3.jpg" class="portfolio-img"></div>
+<div class="img-box"><img src="2.jpg" class="portfolio-img"></div>
+<div class="img-box"><img src="1.jpg" class="portfolio-img"></div>
 
 <script>
 // 初始化每张图片的参数
