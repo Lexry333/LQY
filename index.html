@@ -35,20 +35,44 @@
             -webkit-touch-callout: none;
         }
 
-        /* 提示文字样式：固定在顶部，半透明不遮挡内容 */
-        .tip-text {
+        /* 提示文字容器：包含中英双语 */
+        .tip-container {
+            margin-bottom: 20px;
+            text-align: center;
+        }
+        /* 中文提示文字样式 */
+        .tip-text-cn {
             color: #e0e0e0;
             font-size: 16px;
-            margin-bottom: 20px;
             padding: 8px 20px;
             background: rgba(0, 0, 0, 0.3);
             border-radius: 20px;
             letter-spacing: 1px;
+            display: block;
+            margin-bottom: 8px;
             /* 禁止提示文字被选择 */
             pointer-events: none;
-            @media (max-width: 768px) {
+        }
+        /* 英文提示文字样式 */
+        .tip-text-en {
+            color: #b0b0b0;
+            font-size: 14px;
+            padding: 6px 18px;
+            background: rgba(0, 0, 0, 0.2);
+            border-radius: 18px;
+            display: block;
+            /* 禁止提示文字被选择 */
+            pointer-events: none;
+        }
+        /* 移动端适配 */
+        @media (max-width: 768px) {
+            .tip-text-cn {
                 font-size: 14px;
                 padding: 6px 16px;
+            }
+            .tip-text-en {
+                font-size: 12px;
+                padding: 4px 14px;
             }
         }
 
@@ -70,40 +94,35 @@
             cursor: zoom-in;
             box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
             border-radius: 4px;
-            /* 核心：禁止图片被拖拽/选择（第二层防护） */
-            pointer-events: auto;
+            /* 核心：仅禁止拖拽，不拦截交互（修复缩放问题关键） */
             -webkit-user-drag: none;
             user-drag: none;
             -webkit-touch-callout: none;
+            /* 确保图片能接收滚轮/触摸事件 */
+            pointer-events: auto !important;
+            position: relative;
+            z-index: 2;
         }
 
-        /* 图片覆盖层：防止右键直接保存（第三层防护） */
+        /* 图片外层容器：仅用于布局，不再加覆盖层（避免拦截交互） */
         .img-wrapper {
             position: relative;
             width: 100%;
             height: auto;
+            margin: 10px 0;
         }
-        .img-wrapper::after {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            z-index: 1;
-            /* 透明覆盖层，不影响视觉但拦截右键 */
-            background: transparent;
-            pointer-events: auto;
-        }
+
     </style>
 </head>
 <body oncontextmenu="return false;"> <!-- 全局禁止右键菜单（核心防护） -->
-    <!-- 滚轮提示文字 -->
-    <div class="tip-text">✨ 鼠标滚轮可放大/缩小图片 | 手机双指捏合可缩放</div>
+    <!-- 双语提示文字容器 -->
+    <div class="tip-container">
+        <span class="tip-text-cn">✨ 鼠标滚轮可放大/缩小图片 | 手机双指捏合可缩放</span>
+        <span class="tip-text-en">✨ Use mouse wheel to zoom in/out | Pinch to zoom on mobile</span>
+    </div>
 
     <!-- 作品集图片容器 -->
     <div class="portfolio-container">
-        <!-- 图片外层包裹div，添加防护覆盖层 -->
         <!-- 图片顺序可直接调整img-wrapper标签顺序 -->
         <div class="img-wrapper">
             <img src="1.jpg" alt="3D作品1" class="portfolio-img" onwheel="zoomImg(event)">
@@ -142,9 +161,12 @@
             }
         });
 
-        // 鼠标滚轮缩放图片的核心函数
+        // 鼠标滚轮缩放图片的核心函数（修复交互拦截问题）
         function zoomImg(event) {
+            // 仅阻止图片的默认滚动，不全局阻止
+            event.stopPropagation();
             event.preventDefault();
+            
             const img = event.target;
             let scale = parseFloat(img.dataset.scale || 1);
             scale += event.deltaY > 0 ? -0.1 : 0.1;
@@ -153,12 +175,14 @@
             img.style.transform = `scale(${scale})`;
         }
 
-        // 移动端触摸缩放支持
+        // 移动端触摸缩放支持（确保事件能正常触发）
         let initialScale = 1;
         let initialDistance = 0;
         let currentImg = null;
         document.querySelectorAll('.portfolio-img').forEach(img => {
             img.addEventListener('touchstart', (e) => {
+                // 确保触摸事件能被图片接收
+                e.stopPropagation();
                 if (e.touches.length === 2) {
                     currentImg = e.target;
                     initialScale = parseFloat(currentImg.dataset.scale || 1);
@@ -170,6 +194,7 @@
                 }
             });
             img.addEventListener('touchmove', (e) => {
+                e.stopPropagation();
                 e.preventDefault();
                 if (e.touches.length === 2 && currentImg) {
                     const x1 = e.touches[0].clientX;
@@ -183,12 +208,13 @@
                     currentImg.style.transform = `scale(${clampedScale})`;
                 }
             });
-            img.addEventListener('touchend', () => {
+            img.addEventListener('touchend', (e) => {
+                e.stopPropagation();
                 currentImg = null;
             });
         });
 
-        // 额外防护：禁止图片复制/粘贴
+        // 额外防护：禁止图片复制/粘贴（不影响交互）
         document.querySelectorAll('.portfolio-img').forEach(img => {
             img.addEventListener('copy', (e) => {
                 e.preventDefault();
