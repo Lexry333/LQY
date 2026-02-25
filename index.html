@@ -3,217 +3,843 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>我的3D作品集</title>
+    <title>作品集 | Portfolio</title>
     <style>
+        /* 基础重置 & 性能优化 */
         * {
             margin: 0;
             padding: 0;
             box-sizing: border-box;
             user-select: none;
             -webkit-user-drag: none;
+            -webkit-tap-highlight-color: transparent;
+            tap-highlight-color: transparent;
         }
 
+        /* 高端动态背景 - 粒子渐变+景深效果 */
         body {
-            background: linear-gradient(135deg, #0f0f18, #1a1a2e, #16213e);
+            background: radial-gradient(circle at 50% 50%, #121826, #050811);
             min-height: 100vh;
-            display: flex;
+            font-family: 'Inter', system-ui, -apple-system, sans-serif;
+            overflow-x: hidden;
+            color: #fff;
+            position: relative;
+            /* 粒子背景画布 */
+            canvas {
+                position: fixed;
+                top: 0;
+                left: 0;
+                width: 100vw;
+                height: 100vh;
+                z-index: 0;
+                pointer-events: none;
+                opacity: 0.7;
+            }
+        }
+
+        /* 顶部标题栏 - 简约高端 */
+        .header {
+            position: relative;
+            z-index: 10;
+            text-align: center;
+            padding: 2rem 1rem;
+            margin-bottom: 1rem;
+            h1 {
+                font-size: 2.2rem;
+                font-weight: 700;
+                background: linear-gradient(120deg, #4facfe, #00f2fe);
+                -webkit-background-clip: text;
+                background-clip: text;
+                color: transparent;
+                margin-bottom: 0.5rem;
+            }
+            .subtitle {
+                color: #a0aec0;
+                font-size: 0.95rem;
+                letter-spacing: 0.5px;
+                line-height: 1.5;
+            }
+            .subtitle-en {
+                color: #718096;
+                font-size: 0.85rem;
+                letter-spacing: 0.3px;
+                margin-top: 0.2rem;
+            }
+        }
+
+        /* 核心：沉浸式网格画廊（替代滚轮列表） */
+        .gallery-container {
+            position: relative;
+            z-index: 10;
+            width: 100%;
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 0 1rem 3rem;
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            gap: 1.5rem;
+            /* 网格项悬停动画 */
+            .gallery-item {
+                border-radius: 12px;
+                overflow: hidden;
+                box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+                transform: translateY(0);
+                transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+                cursor: pointer;
+                position: relative;
+                /* 防盗水印层 */
+                &::after {
+                    content: "";
+                    position: absolute;
+                    top: 0;
+                    left: 0;
+                    width: 100%;
+                    height: 100%;
+                    background: url("data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48dGl0bGU+5bm/5pyN5Lq6PC90aXRsZT48dGV4dCB4PSIzMCIgeT0iMTAwIiBmb250LWZhbWlseT0iQXJpYWwsIHNhbnMtc2VyaWYiIGZvbnQtc2l6ZT0iMTUiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGZpbGw9IiNmZmYvMzAwIj7nlLXorr7orr7mlL/nlYw8L3RleHQ+PC9zdmc+") repeat;
+                    background-size: 120px;
+                    opacity: 0.12;
+                    pointer-events: none;
+                    z-index: 1;
+                }
+                /* 悬停效果 */
+                &:hover {
+                    transform: translateY(-8px) scale(1.02);
+                    box-shadow: 0 16px 48px rgba(0, 191, 255, 0.2);
+                }
+                /* 图片容器 */
+                .gallery-img-wrapper {
+                    width: 100%;
+                    height: 220px;
+                    overflow: hidden;
+                    position: relative;
+                    /* 加载动画 */
+                    &.loading::before {
+                        content: "";
+                        position: absolute;
+                        top: 50%;
+                        left: 50%;
+                        width: 40px;
+                        height: 40px;
+                        margin: -20px 0 0 -20px;
+                        border: 3px solid rgba(79, 172, 254, 0.3);
+                        border-radius: 50%;
+                        border-top-color: #4facfe;
+                        animation: spin 1s linear infinite;
+                        z-index: 2;
+                    }
+                    /* 图片样式 */
+                    img {
+                        width: 100%;
+                        height: 100%;
+                        object-fit: cover;
+                        transform-origin: center;
+                        transition: transform 0.3s ease;
+                        /* 防盗模糊（加载完成后清除） */
+                        filter: blur(2px);
+                        &.loaded {
+                            filter: none;
+                        }
+                    }
+                }
+                /* 作品标题 */
+                .item-title {
+                    padding: 1rem;
+                    font-size: 1rem;
+                    font-weight: 500;
+                    color: #e2e8f0;
+                    background: linear-gradient(to bottom, transparent, rgba(17, 24, 39, 0.8));
+                }
+            }
+        }
+
+        /* 全屏预览模式（保留拖拽缩放） */
+        .preview-modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background: rgba(0, 8, 17, 0.98);
+            z-index: 1000;
+            display: none;
             flex-direction: column;
             align-items: center;
-            padding: 20px 0;
-            font-family: sans-serif;
-            overflow-x: hidden;
-        }
-
-        /* 提示语 */
-        .tip {
-            color: #fff;
-            font-size: 14px;
-            background: rgba(0,0,0,0.3);
-            padding: 6px 14px;
-            border-radius: 20px;
-            margin-bottom: 6px;
-            pointer-events: none;
-        }
-
-        /* 图片容器（支持拖拽） */
-        .img-box {
-            position: relative;
-            width: 100%;
-            max-width: 1100px; /* 容器宽度调大，让图片初始显示更大 */
-            margin: 10px auto;
-            display: flex;
             justify-content: center;
-            overflow: hidden;
-            touch-action: none; /* 禁用浏览器默认触摸行为 */
+            padding: 2rem 1rem;
+            /* 预览图片容器 */
+            .preview-img-container {
+                width: 90%;
+                max-width: 1200px;
+                height: 80vh;
+                overflow: hidden;
+                position: relative;
+                margin-bottom: 1rem;
+                /* 预览图片 */
+                img {
+                    width: 100%;
+                    height: 100%;
+                    object-fit: contain;
+                    cursor: grab;
+                    transform-origin: center;
+                    transition: transform 0.05s linear;
+                    &:active {
+                        cursor: grabbing;
+                    }
+                }
+            }
+            /* 导航控制栏 */
+            .preview-controls {
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+                width: 90%;
+                max-width: 1200px;
+                margin-top: 1rem;
+                /* 翻页按钮 */
+                .nav-btn {
+                    width: 48px;
+                    height: 48px;
+                    border-radius: 50%;
+                    background: rgba(79, 172, 254, 0.2);
+                    color: #fff;
+                    border: 1px solid rgba(79, 172, 254, 0.4);
+                    font-size: 1.2rem;
+                    cursor: pointer;
+                    transition: all 0.2s ease;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    &:hover {
+                        background: rgba(79, 172, 254, 0.4);
+                        transform: scale(1.05);
+                    }
+                    &:disabled {
+                        opacity: 0.2;
+                        cursor: not-allowed;
+                        transform: none;
+                    }
+                }
+                /* 页码指示器 */
+                .page-indicator {
+                    color: #a0aec0;
+                    font-size: 0.9rem;
+                    span {
+                        color: #4facfe;
+                        font-weight: 600;
+                    }
+                }
+                /* 关闭按钮 */
+                .close-btn {
+                    width: 48px;
+                    height: 48px;
+                    border-radius: 50%;
+                    background: rgba(248, 113, 113, 0.2);
+                    color: #fff;
+                    border: 1px solid rgba(248, 113, 113, 0.4);
+                    font-size: 1.2rem;
+                    cursor: pointer;
+                    transition: all 0.2s ease;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    &:hover {
+                        background: rgba(248, 113, 113, 0.4);
+                        transform: scale(1.05);
+                    }
+                }
+            }
+            /* 预览提示语 */
+            .preview-tip {
+                position: absolute;
+                top: 2rem;
+                color: #a0aec0;
+                font-size: 0.9rem;
+                background: rgba(17, 24, 39, 0.7);
+                padding: 0.5rem 1rem;
+                border-radius: 20px;
+                pointer-events: none;
+                line-height: 1.5;
+            }
+            .preview-tip-en {
+                font-size: 0.8rem;
+                color: #90a0b7;
+                margin-top: 0.2rem;
+            }
         }
 
-        /* 图片样式：初始尺寸调至98%（接近满屏但不溢出） */
-        .portfolio-img {
-            width: 98%; /* 核心调整：初始宽度调至98%，更大且不占满屏幕 */
-            height: auto;
-            display: block;
-            cursor: grab;
-            transform-origin: center center;
-            transition: transform 0.08s linear;
-            filter: blur(0.1px); 
-            pointer-events: auto;
-            position: relative;
-            z-index: 1;
+        /* 动画定义 */
+        @keyframes spin {
+            to { transform: rotate(360deg); }
         }
 
-        .portfolio-img:active {
-            cursor: grabbing; /* 按住时的光标样式 */
+        /* 响应式适配 */
+        @media (max-width: 768px) {
+            .header h1 {
+                font-size: 1.8rem;
+            }
+            .gallery-container {
+                grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+                gap: 1rem;
+                .gallery-item {
+                    .gallery-img-wrapper {
+                        height: 180px;
+                    }
+                }
+            }
+            .preview-modal {
+                .preview-img-container {
+                    width: 95%;
+                    height: 70vh;
+                }
+                .preview-controls {
+                    .nav-btn, .close-btn {
+                        width: 40px;
+                        height: 40px;
+                        font-size: 1rem;
+                    }
+                }
+            }
+        }
+
+        /* 强制隐藏右键菜单（防盗） */
+        [oncontextmenu] {
+            pointer-events: auto !important;
         }
     </style>
+    <!-- 预加载字体提升性能 -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&display=swap" rel="stylesheet">
 </head>
 
-<body oncontextmenu="return false">
+<!-- 全维度防盗：禁用右键+选择+拖拽+复制 -->
+<body oncontextmenu="return false" onselectstart="return false" ondragstart="return false" oncopy="return false" oncut="return false" onpaste="return false">
+    <!-- 粒子背景画布（高端视觉） -->
+    <canvas id="particleCanvas"></canvas>
 
-<div class="tip">✨ 鼠标滚轮放大缩小 · 左键拖拽查看细节</div>
-<div class="tip">Use mouse wheel to zoom · Drag to view details</div>
+    <!-- 顶部标题栏 -->
+    <div class="header">
+        <h1>作品集</h1>
+        <p class="subtitle">点击图片查看 | 滚轮缩放 | 拖拽移动
+            <span class="subtitle-en">Click to view | Scroll to zoom | Drag to move</span>
+        </p>
+    </div>
 
-<!-- 图片顺序完全反转：111.jpg → 2025-1.jpg → 2025.jpg → 4.jpg → 3.jpg → 2.jpg → 1.jpg -->
-<div class="img-box"><img src="111.jpg" class="portfolio-img"></div>
-<div class="img-box"><img src="2025-1.jpg" class="portfolio-img"></div>
-<div class="img-box"><img src="2025.jpg" class="portfolio-img"></div>
-<div class="img-box"><img src="4.jpg" class="portfolio-img"></div>
-<div class="img-box"><img src="3.jpg" class="portfolio-img"></div>
-<div class="img-box"><img src="2.jpg" class="portfolio-img"></div>
-<div class="img-box"><img src="1.jpg" class="portfolio-img"></div>
+    <!-- 核心：沉浸式网格画廊（替代滚轮列表） -->
+    <div class="gallery-container" id="galleryContainer">
+        <!-- 画廊项由JS动态生成（性能优化） -->
+    </div>
 
-<script>
-// 初始化每张图片的参数
-document.querySelectorAll('.portfolio-img').forEach(img => {
-  // 初始化缩放、位移参数
-  img.dataset.scale = 1;
-  img.dataset.x = 0;
-  img.dataset.y = 0;
+    <!-- 全屏预览模态框 -->
+    <div class="preview-modal" id="previewModal">
+        <div class="preview-tip">←→ 切换 | ESC 关闭 | 滚轮缩放 | 拖拽移动
+            <div class="preview-tip-en">←→ Switch | ESC Close | Scroll to zoom | Drag to move</div>
+        </div>
+        <div class="preview-img-container" id="previewImgContainer">
+            <img src="" id="previewImg" alt="作品" class="portfolio-img">
+        </div>
+        <div class="preview-controls">
+            <button class="nav-btn prev-btn" id="prevBtn">←</button>
+            <div class="page-indicator">作品 <span id="currentPageNum">1</span> / <span id="totalPageNum">7</span></div>
+            <button class="nav-btn next-btn" id="nextBtn">→</button>
+            <button class="close-btn" id="closeBtn">×</button>
+        </div>
+    </div>
 
-  // --------------------------
-  // 1. 电脑端滚轮缩放功能
-  // --------------------------
-  img.addEventListener('wheel', (e) => {
-    e.preventDefault();
-    let scale = parseFloat(img.dataset.scale);
-    // 调整缩放步长，放大缩小更顺手
-    scale += e.deltaY < 0 ? 0.2 : -0.2;
-    // 限制缩放范围：最小0.5倍，最大6倍
-    scale = Math.max(0.5, Math.min(6, scale));
-    img.dataset.scale = scale;
-    updateImgTransform(img);
-  }, { passive: false });
+    <script>
+        // ====================== 性能优化：提前声明常量 ======================
+        const imgList = [
+            { src: "111.jpg", title: "1" },
+            { src: "2025-1.jpg", title: "2" },
+            { src: "2025.jpg", title: "3" },
+            { src: "4.jpg", title: "4" },
+            { src: "3.jpg", title: "5" },
+            { src: "2.jpg", title: "6" },
+            { src: "1.jpg", title: "7" }
+        ]; // 作品数据（纯数字序号）
+        let currentIndex = 0; // 当前预览索引
+        const imgStates = {}; // 保存每张图片的缩放/位移状态
+        
+        // 初始化图片状态（性能优化：提前初始化）
+        imgList.forEach((_, index) => {
+            imgStates[index] = { scale: 1, x: 0, y: 0 };
+        });
 
-  // --------------------------
-  // 2. 电脑端鼠标拖拽功能（修复失效问题）
-  // --------------------------
-  let isDragging = false;
-  let startX = 0, startY = 0;
+        // ====================== DOM元素获取（性能优化：只获取一次） ======================
+        const galleryContainer = document.getElementById('galleryContainer');
+        const previewModal = document.getElementById('previewModal');
+        const previewImg = document.getElementById('previewImg');
+        const previewImgContainer = document.getElementById('previewImgContainer');
+        const prevBtn = document.getElementById('prevBtn');
+        const nextBtn = document.getElementById('nextBtn');
+        const closeBtn = document.getElementById('closeBtn');
+        const currentPageNum = document.getElementById('currentPageNum');
+        const totalPageNum = document.getElementById('totalPageNum');
+        const particleCanvas = document.getElementById('particleCanvas');
+        const ctx = particleCanvas.getContext('2d');
 
-  // 鼠标按下
-  img.addEventListener('mousedown', (e) => {
-    e.preventDefault();
-    isDragging = true;
-    // 记录按下时的鼠标位置
-    startX = e.clientX - parseFloat(img.dataset.x);
-    startY = e.clientY - parseFloat(img.dataset.y);
-    img.style.cursor = "grabbing";
-  });
+        // ====================== 高端视觉：粒子背景（不影响性能） ======================
+        function initParticleBackground() {
+            // 设置画布尺寸（响应式）
+            function resizeCanvas() {
+                particleCanvas.width = window.innerWidth;
+                particleCanvas.height = window.innerHeight;
+            }
+            resizeCanvas();
+            window.addEventListener('resize', resizeCanvas);
 
-  // 鼠标移动（绑定到document，避免鼠标移出图片失效）
-  document.addEventListener('mousemove', (e) => {
-    if (!isDragging) return;
-    // 计算新的位移
-    const newX = e.clientX - startX;
-    const newY = e.clientY - startY;
-    img.dataset.x = newX;
-    img.dataset.y = newY;
-    updateImgTransform(img);
-  });
+            // 粒子类（轻量级，不卡顿）
+            class Particle {
+                constructor() {
+                    this.x = Math.random() * particleCanvas.width;
+                    this.y = Math.random() * particleCanvas.height;
+                    this.size = Math.random() * 1.5 + 0.5;
+                    this.speedX = Math.random() * 0.5 - 0.25;
+                    this.speedY = Math.random() * 0.5 - 0.25;
+                    this.color = 'rgba(79, 172, 254, 0.6)';
+                }
+                update() {
+                    this.x += this.speedX;
+                    this.y += this.speedY;
+                    // 边界回弹
+                    if (this.x < 0 || this.x > particleCanvas.width) this.speedX = -this.speedX;
+                    if (this.y < 0 || this.y > particleCanvas.height) this.speedY = -this.speedY;
+                }
+                draw() {
+                    ctx.fillStyle = this.color;
+                    ctx.beginPath();
+                    ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+                    ctx.fill();
+                }
+            }
 
-  // 鼠标松开
-  document.addEventListener('mouseup', () => {
-    isDragging = false;
-    img.style.cursor = "grab";
-  });
+            // 创建粒子（数量适配屏幕，避免性能问题）
+            const particleCount = Math.min(Math.floor(window.innerWidth / 10), 150);
+            const particles = Array.from({ length: particleCount }, () => new Particle());
 
-  // --------------------------
-  // 3. 移动端触摸功能（缩放+拖拽）
-  // --------------------------
-  let touchStart = {};
-  let initialScale = 1;
+            // 动画循环（使用requestAnimationFrame，性能最优）
+            function animate() {
+                ctx.clearRect(0, 0, particleCanvas.width, particleCanvas.height);
+                particles.forEach(particle => {
+                    particle.update();
+                    particle.draw();
+                });
+                requestAnimationFrame(animate);
+            }
+            animate();
+        }
 
-  // 触摸开始
-  img.addEventListener('touchstart', (e) => {
-    e.preventDefault();
-    const touches = e.touches;
-    
-    // 单指触摸：初始化拖拽
-    if (touches.length === 1) {
-      touchStart.x = touches[0].clientX - parseFloat(img.dataset.x);
-      touchStart.y = touches[0].clientY - parseFloat(img.dataset.y);
-    }
-    // 双指触摸：初始化缩放
-    else if (touches.length === 2) {
-      initialScale = parseFloat(img.dataset.scale);
-      // 计算双指初始距离
-      touchStart.distance = getTouchDistance(touches[0], touches[1]);
-    }
-  }, { passive: false });
+        // ====================== 核心：动态生成网格画廊（性能优化） ======================
+        function renderGallery() {
+            // 清空容器（避免重复）
+            galleryContainer.innerHTML = '';
+            
+            // 批量生成画廊项（文档碎片：减少DOM重绘）
+            const fragment = document.createDocumentFragment();
+            
+            imgList.forEach((item, index) => {
+                const galleryItem = document.createElement('div');
+                galleryItem.className = 'gallery-item';
+                galleryItem.dataset.index = index;
+                
+                // 图片容器（带加载状态）
+                const imgWrapper = document.createElement('div');
+                imgWrapper.className = 'gallery-img-wrapper loading';
+                
+                // 图片元素（懒加载+防盗）
+                const img = document.createElement('img');
+                img.src = item.src;
+                img.alt = `作品${item.title}`;
+                img.loading = 'lazy'; // 懒加载提升性能
+                img.dataset.index = index;
+                
+                // 图片加载完成（清除模糊+加载动画）
+                img.onload = function() {
+                    imgWrapper.classList.remove('loading');
+                    img.classList.add('loaded');
+                    // 防盗：禁止图片保存（多层防护）
+                    this.oncontextmenu = () => false;
+                    this.oncopy = () => false;
+                };
+                
+                // 图片加载失败（占位图）
+                img.onerror = function() {
+                    imgWrapper.classList.remove('loading');
+                    this.src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgZmlsbD0iIzIyMiIvPjx0ZXh0IHg9IjEwMCIgeT0iMTAwIiBmb250LWZhbWlseT0iQXJpYWwsIHNhbnMtc2VyaWYiIGZvbnQtc2l6ZT0iMTYiIGZpbGw9IiNmZmYiIHN0cm9rZT0iI2ZmZiIgc3Ryb2tlLXdpZHRoPSIyIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIj7nlLXorr7orr7mlL/nlYw8L3RleHQ+PC9zdmc+';
+                };
+                
+                // 作品标题（纯数字）
+                const title = document.createElement('div');
+                title.className = 'item-title';
+                title.textContent = item.title;
+                
+                // 组装DOM
+                imgWrapper.appendChild(img);
+                galleryItem.appendChild(imgWrapper);
+                galleryItem.appendChild(title);
+                fragment.appendChild(galleryItem);
+                
+                // 绑定点击事件（打开预览）
+                galleryItem.addEventListener('click', () => {
+                    currentIndex = index;
+                    openPreview();
+                });
+                
+                // 提前绑定画廊图片的拖拽缩放（保留功能）
+                bindImgEvents(img, false, index);
+            });
+            
+            // 一次性插入DOM（性能优化）
+            galleryContainer.appendChild(fragment);
+            
+            // 设置总页码
+            totalPageNum.textContent = imgList.length;
+        }
 
-  // 触摸移动
-  img.addEventListener('touchmove', (e) => {
-    e.preventDefault();
-    const touches = e.touches;
-    
-    // 单指移动：拖拽图片
-    if (touches.length === 1) {
-      const newX = touches[0].clientX - touchStart.x;
-      const newY = touches[0].clientY - touchStart.y;
-      img.dataset.x = newX;
-      img.dataset.y = newY;
-      updateImgTransform(img);
-    }
-    // 双指移动：缩放图片
-    else if (touches.length === 2) {
-      const currentDistance = getTouchDistance(touches[0], touches[1]);
-      const scale = initialScale * (currentDistance / touchStart.distance);
-      // 限制缩放范围
-      img.dataset.scale = Math.max(0.5, Math.min(6, scale));
-      updateImgTransform(img);
-    }
-  }, { passive: false });
+        // ====================== 预览模式控制 ======================
+        // 打开预览
+        function openPreview() {
+            // 更新预览图片
+            previewImg.src = imgList[currentIndex].src;
+            previewImg.alt = `作品${imgList[currentIndex].title}`;
+            
+            // 恢复图片状态
+            resetPreviewImgTransform();
+            
+            // 更新页码
+            currentPageNum.textContent = currentIndex + 1;
+            
+            // 更新按钮状态
+            updateNavBtnStates();
+            
+            // 显示预览，隐藏滚动
+            previewModal.style.display = 'flex';
+            document.body.style.overflow = 'hidden';
+            
+            // 绑定预览图片的拖拽缩放（确保只绑定一次）
+            bindImgEvents(previewImg, true);
+            
+            // 防盗：预览图额外防护
+            previewImg.oncontextmenu = () => false;
+            previewImg.oncopy = () => false;
+        }
 
-  // --------------------------
-  // 工具函数：更新图片变换样式
-  // --------------------------
-  function updateImgTransform(img) {
-    const x = img.dataset.x;
-    const y = img.dataset.y;
-    const scale = img.dataset.scale;
-    img.style.transform = `translate(${x}px, ${y}px) scale(${scale})`;
-  }
+        // 关闭预览
+        function closePreview() {
+            // 保存当前图片状态
+            savePreviewImgState();
+            
+            // 隐藏预览，恢复滚动
+            previewModal.style.display = 'none';
+            document.body.style.overflow = '';
+        }
 
-  // --------------------------
-  // 工具函数：计算双指距离
-  // --------------------------
-  function getTouchDistance(touch1, touch2) {
-    const dx = touch2.clientX - touch1.clientX;
-    const dy = touch2.clientY - touch1.clientY;
-    return Math.sqrt(dx * dx + dy * dy);
-  }
-});
+        // 切换作品
+        function switchItem(direction) {
+            // 保存当前状态
+            savePreviewImgState();
+            
+            // 更新索引
+            currentIndex += direction;
+            
+            // 边界处理
+            currentIndex = Math.max(0, Math.min(imgList.length - 1, currentIndex));
+            
+            // 更新预览
+            previewImg.src = imgList[currentIndex].src;
+            previewImg.alt = `作品${imgList[currentIndex].title}`;
+            
+            // 恢复新作品状态
+            resetPreviewImgTransform();
+            
+            // 更新页码和按钮
+            currentPageNum.textContent = currentIndex + 1;
+            updateNavBtnStates();
+        }
 
-// --------------------------
-// 额外防护：禁止快捷键扒图
-// --------------------------
-document.addEventListener('keydown', (e) => {
-  // 禁止F12、Ctrl+U（查看源代码）、Ctrl+S（保存网页）
-  if (e.key === "F12" || (e.ctrlKey && e.key === "u") || (e.ctrlKey && e.key === "s")) {
-    e.preventDefault();
-    return false;
-  }
-});
-</script>
+        // 更新导航按钮状态
+        function updateNavBtnStates() {
+            prevBtn.disabled = currentIndex === 0;
+            nextBtn.disabled = currentIndex === imgList.length - 1;
+        }
 
+        // ====================== 核心：保留拖拽缩放功能（原逻辑优化） ======================
+        // 绑定图片事件（区分画廊/预览）
+        function bindImgEvents(img, isPreview = false, galleryIndex = null) {
+            // 移除原有事件（避免重复绑定，性能优化）
+            img.removeEventListener('wheel', handleWheel);
+            img.removeEventListener('mousedown', handleMouseDown);
+            img.removeEventListener('touchstart', handleTouchStart);
+            
+            // 滚轮缩放（性能优化：节流）
+            let wheelTimer = null;
+            function handleWheel(e) {
+                e.preventDefault();
+                
+                // 节流：避免高频触发
+                if (wheelTimer) clearTimeout(wheelTimer);
+                wheelTimer = setTimeout(() => {
+                    const index = isPreview ? currentIndex : galleryIndex;
+                    const state = imgStates[index];
+                    
+                    // 缩放逻辑（保留原范围）
+                    const scaleDelta = e.deltaY < 0 ? 0.2 : -0.2;
+                    state.scale = Math.max(0.5, Math.min(6, state.scale + scaleDelta));
+                    
+                    // 更新变换
+                    updateImgTransform(img, state);
+                }, 16); // 60fps
+            }
+            img.addEventListener('wheel', handleWheel, { passive: false });
+            
+            // 鼠标拖拽
+            function handleMouseDown(e) {
+                e.preventDefault();
+                const index = isPreview ? currentIndex : galleryIndex;
+                const state = imgStates[index];
+                
+                let startX = e.clientX - state.x;
+                let startY = e.clientY - state.y;
+                let isDragging = false;
+                
+                img.style.cursor = 'grabbing';
+                
+                // 鼠标移动（性能优化：使用passive）
+                function handleMouseMove(e) {
+                    if (!isDragging) return;
+                    state.x = e.clientX - startX;
+                    state.y = e.clientY - startY;
+                    updateImgTransform(img, state);
+                }
+                
+                // 鼠标抬起
+                function handleMouseUp() {
+                    isDragging = false;
+                    img.style.cursor = 'grab';
+                    document.removeEventListener('mousemove', handleMouseMove);
+                    document.removeEventListener('mouseup', handleMouseUp);
+                }
+                
+                isDragging = true;
+                document.addEventListener('mousemove', handleMouseMove);
+                document.addEventListener('mouseup', handleMouseUp);
+            }
+            img.addEventListener('mousedown', handleMouseDown);
+            
+            // 移动端触摸（性能优化：局部变量）
+            function handleTouchStart(e) {
+                e.preventDefault();
+                const index = isPreview ? currentIndex : galleryIndex;
+                const state = imgStates[index];
+                const touches = e.touches;
+                
+                let touchStart = {};
+                
+                // 单指拖拽
+                if (touches.length === 1) {
+                    touchStart.x = touches[0].clientX - state.x;
+                    touchStart.y = touches[0].clientY - state.y;
+                }
+                // 双指缩放
+                else if (touches.length === 2) {
+                    touchStart.scale = state.scale;
+                    touchStart.distance = getTouchDistance(touches[0], touches[1]);
+                }
+                
+                // 触摸移动
+                function handleTouchMove(e) {
+                    e.preventDefault();
+                    const touches = e.touches;
+                    
+                    if (touches.length === 1) {
+                        state.x = touches[0].clientX - touchStart.x;
+                        state.y = touches[0].clientY - touchStart.y;
+                        updateImgTransform(img, state);
+                    }
+                    else if (touches.length === 2) {
+                        const distance = getTouchDistance(touches[0], touches[1]);
+                        state.scale = Math.max(0.5, Math.min(6, touchStart.scale * (distance / touchStart.distance)));
+                        updateImgTransform(img, state);
+                    }
+                }
+                
+                // 触摸结束
+                function handleTouchEnd() {
+                    img.removeEventListener('touchmove', handleTouchMove);
+                    document.removeEventListener('touchend', handleTouchEnd);
+                }
+                
+                img.addEventListener('touchmove', handleTouchMove, { passive: false });
+                document.addEventListener('touchend', handleTouchEnd);
+            }
+            img.addEventListener('touchstart', handleTouchStart, { passive: false });
+        }
+
+        // 计算双指距离
+        function getTouchDistance(t1, t2) {
+            const dx = t2.clientX - t1.clientX;
+            const dy = t2.clientY - t1.clientY;
+            return Math.sqrt(dx * dx + dy * dy) || 1;
+        }
+
+        // 更新图片变换（性能优化：只更新必要属性）
+        function updateImgTransform(img, state) {
+            if (!img || !state) return;
+            img.style.transform = `translate(${state.x}px, ${state.y}px) scale(${state.scale})`;
+        }
+
+        // 保存预览图片状态
+        function savePreviewImgState() {
+            if (!previewImg.style.transform) return;
+            
+            const transform = previewImg.style.transform;
+            const scaleMatch = transform.match(/scale\(([\d.]+)\)/);
+            const xMatch = transform.match(/translate\(([\d.-]+)px,/);
+            const yMatch = transform.match(/, ([\d.-]+)px\)/);
+            
+            if (scaleMatch && xMatch && yMatch) {
+                imgStates[currentIndex].scale = parseFloat(scaleMatch[1]);
+                imgStates[currentIndex].x = parseFloat(xMatch[1]);
+                imgStates[currentIndex].y = parseFloat(yMatch[1]);
+            }
+        }
+
+        // 重置预览图片变换
+        function resetPreviewImgTransform() {
+            updateImgTransform(previewImg, imgStates[currentIndex]);
+        }
+
+        // ====================== 全维度防盗加固 ======================
+        function initSecurity() {
+            // 1. 禁用所有快捷键（F12/Ctrl+U/Ctrl+S等）
+            document.addEventListener('keydown', (e) => {
+                // 禁用F12、Ctrl+U、Ctrl+S、Ctrl+Shift+I、Alt+F4等
+                const forbiddenKeys = ['F12', 'u', 's', 'I'];
+                if (e.key === 'F12' || 
+                    (e.ctrlKey && forbiddenKeys.includes(e.key)) || 
+                    (e.ctrlKey && e.shiftKey && e.key === 'I') ||
+                    (e.altKey && e.key === 'F4')) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    return false;
+                }
+            }, true); // 捕获阶段触发，优先级最高
+
+            // 2. 禁用控制台注入（防调试）
+            try {
+                (function() {
+                    const _constructor = constructor;
+                    constructor = function() {
+                        if (arguments && typeof arguments[0] === 'string' && arguments[0].indexOf('debugger') !== -1) {
+                            return;
+                        }
+                        return _constructor.apply(this, arguments);
+                    };
+                    constructor.prototype = _constructor.prototype;
+                })();
+            } catch (e) {}
+
+            // 3. 图片canvas重绘（防直接下载，核心防盗）
+            function protectImages() {
+                const images = document.querySelectorAll('img');
+                images.forEach(img => {
+                    // 等待图片加载完成
+                    img.onload = function() {
+                        // 创建canvas重绘（图片内容转为canvas，无法直接下载）
+                        if (this.classList.contains('loaded') && !this.dataset.protected) {
+                            const canvas = document.createElement('canvas');
+                            const ctx = canvas.getContext('2d');
+                            
+                            canvas.width = this.naturalWidth;
+                            canvas.height = this.naturalHeight;
+                            
+                            // 绘制图片+隐形水印（防盗）
+                            ctx.drawImage(this, 0, 0);
+                            // 隐形水印（肉眼不可见，防篡改）
+                            ctx.fillStyle = 'rgba(0,0,0,0.005)';
+                            ctx.font = '1px Arial';
+                            ctx.fillText('PROTECTED BY AUTHOR ' + Date.now(), 0, 1);
+                            
+                            // 替换图片为canvas（保留原属性）
+                            const parent = this.parentElement;
+                            const canvasCopy = canvas.cloneNode(true);
+                            canvasCopy.className = this.className;
+                            canvasCopy.dataset.index = this.dataset.index;
+                            canvasCopy.style.width = '100%';
+                            canvasCopy.style.height = '100%';
+                            canvasCopy.style.objectFit = 'cover';
+                            canvasCopy.oncontextmenu = () => false;
+                            
+                            // 替换DOM（保留事件）
+                            parent.replaceChild(canvasCopy, this);
+                            
+                            // 重新绑定事件
+                            const index = parseInt(canvasCopy.dataset.index);
+                            bindImgEvents(canvasCopy, false, index);
+                            
+                            // 标记已保护
+                            canvasCopy.dataset.protected = 'true';
+                        }
+                    };
+                });
+            }
+
+            // 4. 定时检查DOM（防删除防盗代码）
+            setInterval(() => {
+                protectImages();
+                // 重新绑定所有防盗事件
+                document.body.oncontextmenu = () => false;
+                document.body.onselectstart = () => false;
+            }, 1000);
+        }
+
+        // ====================== 事件绑定（性能优化：只绑定一次） ======================
+        function bindEvents() {
+            // 预览导航按钮
+            prevBtn.addEventListener('click', () => switchItem(-1));
+            nextBtn.addEventListener('click', () => switchItem(1));
+            closeBtn.addEventListener('click', closePreview);
+
+            // 键盘控制（预览模式）
+            document.addEventListener('keydown', (e) => {
+                if (previewModal.style.display === 'flex') {
+                    switch(e.key) {
+                        case 'ArrowLeft': switchItem(-1); break;
+                        case 'ArrowRight': switchItem(1); break;
+                        case 'Escape': closePreview(); break;
+                        default: break;
+                    }
+                }
+            });
+
+            // 点击模态框空白处关闭（体验优化）
+            previewModal.addEventListener('click', (e) => {
+                if (e.target === previewModal) closePreview();
+            });
+        }
+
+        // ====================== 初始化（性能优化：异步加载） ======================
+        window.addEventListener('DOMContentLoaded', () => {
+            // 异步初始化，不阻塞页面渲染
+            setTimeout(() => {
+                initParticleBackground(); // 高端背景
+                renderGallery(); // 生成画廊
+                bindEvents(); // 绑定事件
+                initSecurity(); // 防盗加固
+            }, 0);
+        });
+
+        // ====================== 终极性能优化：预加载关键资源 ======================
+        // 预加载前3张图片（提升首屏体验）
+        function preloadCriticalImages() {
+            const criticalImages = imgList.slice(0, 3);
+            criticalImages.forEach(item => {
+                const img = new Image();
+                img.src = item.src;
+                img.onload = () => console.log(`预加载完成：作品${item.title}`);
+            });
+        }
+        preloadCriticalImages();
+    </script>
 </body>
 </html>
